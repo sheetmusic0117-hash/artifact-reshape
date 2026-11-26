@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>圣遗物重塑模拟器</title>
+<meta name="description" content="原神启圣之尘重塑：精确计算每种保底选法的成功率与期望收益">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="i18n.js"></script>
+</head>
+<body>
+<header class="wrap">
+  <div class="topline">
+    <h1 data-i18n="title">圣遗物重塑模拟器</h1>
+    <label class="lang"><span data-i18n="lang">语言</span>
+      <select id="langSel"></select>
+    </label>
+  </div>
+  <p class="lede" data-i18n="lede"></p>
+  <div class="toolbar">
+    <button id="btnExport" data-i18n="btnExport"></button>
+    <label class="btn ghost"><span data-i18n="btnImport"></span><input type="file" id="fileImport" accept=".json,application/json" hidden></label>
+    <button id="btnCsv" class="ghost" data-i18n="btnCsv"></button>
+    <span id="ioMsg" class="hint"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <h2><span class="num">1</span><span data-i18n="sec1"></span></h2>
+    <div class="row">
+      <label class="field"><span data-i18n="initCount"></span>
+        <select id="initCount">
+          <option value="4" data-i18n="init4"></option>
+          <option value="3" data-i18n="init3"></option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="guarantee"></span>
+        <select id="guarantee">
+          <option value="2" data-i18n="times" data-n="2"></option>
+          <option value="3" data-i18n="times" data-n="3"></option>
+          <option value="4" data-i18n="times" data-n="4"></option>
+        </select>
+      </label>
+    </div>
+    <div class="table-scroll">
+      <table class="subs">
+        <thead><tr><th>#</th><th data-i18n="th.sub"></th><th data-i18n="th.value"></th><th data-i18n="th.w"></th><th data-i18n="th.init"></th><th data-i18n="th.infer"></th></tr></thead>
+        <tbody id="subsBody"></tbody>
+      </table>
+    </div>
+    <p id="inferMsg" class="hint"></p>
+    <p class="hint" data-i18n="hint.score"></p>
+    <div class="stat-line"><span data-i18n="curScore"></span><b id="curScore">—</b>　<span data-i18n="initScore"></span><b id="initScore">—</b></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">2</span><span data-i18n="sec2"></span></h2>
+    <div id="conds"></div>
+    <div class="row">
+      <button class="ghost" data-add="hits" data-i18n="add.hits"></button>
+      <button class="ghost" data-add="score" data-i18n="add.score"></button>
+      <button class="ghost" data-add="value" data-i18n="add.value"></button>
+    </div>
+    <p class="hint" data-i18n="hint.conds"></p>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">3</span><span data-i18n="sec3"></span></h2>
+    <div class="row">
+      <label class="field"><span data-i18n="show"></span>
+        <select id="chartMetric">
+          <option value="mean" data-i18n="m.mean"></option>
+          <option value="p" data-i18n="m.p"></option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="baseline"> <span data-i18n="baseline"></span></label>
+    </div>
+    <div id="bestBox" class="best"></div>
+    <div class="chart-box tall"><canvas id="mainChart"></canvas></div>
+    <div class="table-scroll"><table id="resultTable" class="results"></table></div>
+    <p class="hint" data-i18n="hint.sort"></p>
+    <p class="hint" data-i18n="hint.multi"></p>
+  </section>
+
+  <section class="card" id="detail">
+    <h2><span class="num">4</span><span data-i18n="sec4"></span><span id="detailTitle"></span></h2>
+    <div class="grid2">
+      <div>
+        <h3 data-i18n="h.combo"></h3>
+        <p class="hint small" data-i18n="hint.combo"></p>
+        <div class="chart-box"><canvas id="comboChart"></canvas></div>
+      </div>
+      <div>
+        <h3 data-i18n="h.hist"></h3>
+        <p class="hint small" id="histHint"></p>
+        <div class="chart-box"><canvas id="histChart"></canvas></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="showFail"> <span data-i18n="showFail"></span></label>
+      <button id="btnComboCsv" class="ghost" data-i18n="btnComboCsv"></button>
+    </div>
+    <div class="table-scroll"><table id="comboTable" class="results combos"></table></div>
+  </section>
+</main>
+
+<footer class="assume"><div class="wrap" data-i18n="footer"></div></footer>
+
+<script>I18N.apply();</script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
