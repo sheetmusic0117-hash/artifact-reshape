@@ -252,13 +252,43 @@
     renderDetail();
   }
 
-  // 依「成功率 × 成功時平均收益」由高到低排序（無保底參考固定放最後）
+  // 依「成功率 × 成功時的提升」由高到低排序（無保底參考固定放最後）。
+  // 提升＝成功時平均收益 − 目前收益（沒填目前數值時用初始收益）。重塑可以選擇維持原狀，
+  // 未達成條件時聖遺物不變、提升為 0，所以這個乘積就是每次重塑的期望提升。
+  // （舊版乘的是成功時的總分，會把目前已有的分數也乘上成功率，排序幾乎只看成功率。）
   function sortRows() {
     if (S.chartMetric !== 'p') S.chartMetric = 'mean';
-    for (const r of last.rows) r.ev = r.P > 0 ? r.P * r.meanSucc : 0;
-    const main = last.rows.filter(r => r.pair).sort((a, b) => b.ev - a.ev);
+    for (const r of last.rows) {
+      r.gain = r.meanSucc == null ? null : r.meanSucc - last.ref;
+      r.ev = r.P > 0 ? r.P * r.gain : null;
+    }
+    const key = r => r.ev == null ? -Infinity : r.ev;
+    const main = last.rows.filter(r => r.pair).sort((a, b) => key(b) - key(a));
     last.rows = main.concat(last.rows.filter(r => !r.pair));
     last.best = main[0];
+  }
+
+  const signed = (x, d = 2) => x == null ? '—' : (x > 0 ? '+' : '') + x.toFixed(d);
+
+  // 保留條件裡用來判定的詞條（命中次數、單一詞條數值），如果不是收益比例最高的詞條就提醒：
+  // 判定和收益不一致時，條件會把「收益其實更高、但判定詞條沒達標」的結果剔除。
+  function keepWarning() {
+    const w = S.subs.map(s => +s.w || 0);
+    const name = i => statName(S.subs[i].stat);
+    for (const c of S.conds) {
+      let used = [];
+      if (c.type === 'hits') used = c.subs.map((on, i) => on ? i : -1).filter(i => i >= 0);
+      else if (c.type === 'value') used = [c.sub];
+      else continue;
+      if (!used.length) continue;
+      const others = [0, 1, 2, 3].filter(i => !used.includes(i));
+      const minIn = Math.min(...used.map(i => w[i]));
+      const better = others.filter(i => w[i] > minIn);
+      if (better.length) {
+        return t('warn.keepSubs', { used: used.map(name).join('、'), better: better.map(name).join('、') });
+      }
+    }
+    return null;
   }
 
   /* ---------------- 3. 結果 ---------------- */
@@ -272,8 +302,10 @@
     const { rows, best } = last;
     const anyP = rows.some(r => r.P > 0);
     $('#bestBox').innerHTML = anyP
-      ? t('best', { pair: pairLabel(best.pair), p: pct(best.P), m: f2(best.meanSucc), e: best.ev.toFixed(3) })
+      ? t('best', { pair: pairLabel(best.pair), p: pct(best.P), m: f2(best.meanSucc), g: signed(best.gain), e: signed(best.ev, 3) })
       : `<span class="warn">${t('impossible')}</span>`;
+    const w = keepWarning();
+    if (w) $('#bestBox').innerHTML += `<div class="warn" style="margin-top:6px">⚠ ${w}</div>`;
 
     // 表格
     const tbl = $('#resultTable');
@@ -299,7 +331,7 @@
         el('td', { class: 'n' }, pct(r.P)),
         el('td', { class: 'n' }, r.P > 0 ? (1 / r.P).toFixed(1) : '∞'),
         el('td', { class: 'n' }, f2(r.meanSucc)),
-        el('td', { class: 'n' }, r.ev.toFixed(3)),
+        el('td', { class: 'n' }, r.ev == null ? '—' : signed(r.ev, 3)),
         el('td', { class: 'n' }, r.meanAll.toFixed(2)),
         el('td', { class: 'n' }, r.pair ? pct(r.pTrig, 1) : '—'));
       tb.append(tr);

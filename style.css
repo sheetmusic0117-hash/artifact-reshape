@@ -149,3 +149,10 @@ td.infer { font-size: 12px; color: var(--muted); white-space: normal; min-width:
 .results .pick input { cursor: pointer; width: 16px; height: 16px; vertical-align: middle; }
 .results .pick input:disabled { cursor: not-allowed; opacity: .4; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+
+/* 更新日誌 */
+.changelog { list-style: none; margin: 0; padding: 0; }
+.changelog li { display: grid; grid-template-columns: 7.5em 1fr; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.changelog li:first-child { border-top: 0; }
+.changelog time { color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .changelog li { grid-template-columns: 1fr; } }
