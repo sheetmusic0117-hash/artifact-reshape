@@ -162,7 +162,14 @@
   }
   function currentScore() {
     if (S.subs.some(s => s.value === '' || !isFinite(+s.value))) return null;
-    return S.subs.reduce((a, s) => a + (+s.w || 0) * (+s.value) / byId[s.stat].avg, 0);
+    const cap = caps();
+    return S.subs.reduce((a, s, i) => a + (+s.w || 0) * Math.min(+s.value, cap[i]) / byId[s.stat].avg, 0);
+  }
+  // 收益上限（保留條件裡的「上限」列）：超過的數值按上限計分，與 engine.js 相同
+  function caps() {
+    const cap = [Infinity, Infinity, Infinity, Infinity];
+    for (const c of S.conds) if (c.type === 'cap' && isFinite(+c.max)) cap[c.sub] = Math.min(cap[c.sub], +c.max);
+    return cap;
   }
 
   /* ---------------- 2. 保留條件 ---------------- */
@@ -172,7 +179,8 @@
     if (S.conds.length === 0) box.append(el('p', { class: 'hint' }, t('conds.none')));
     S.conds.forEach((c, ci) => {
       const row = el('div', { class: 'cond' });
-      if (ci > 0) {
+      // 上限不是判定條件，沒有且／或；前面沒有判定條件的列也不用顯示
+      if (c.type !== 'cap' && S.conds.slice(0, ci).some(x => x.type !== 'cap')) {
         const j = el('select', { class: 'join', onchange: e => { c.join = e.target.value; changed(); } },
           el('option', { value: 'and' }, t('and')), el('option', { value: 'or' }, t('or').trim()));
         j.value = c.join || 'and';
@@ -205,6 +213,15 @@
         row.append(el('span', { class: 'tag' }, t('c.value')), s, el('span', null, '≥'),
           el('input', { type: 'number', step: 'any', value: c.min, oninput: e => { c.min = +e.target.value; changed(); } }),
           el('span', { class: 'tag' }, st.pct ? '%' : ''));
+      } else if (c.type === 'cap') {
+        const s = el('select', { onchange: e => { c.sub = +e.target.value; renderConds(); changed(); } });
+        S.subs.forEach((_, i) => s.append(el('option', { value: String(i) }, subName(i))));
+        s.value = String(c.sub);
+        const st = byId[S.subs[c.sub].stat];
+        row.classList.add('cap');
+        row.append(el('span', { class: 'tag' }, t('c.cap')), s, el('span', null, '≤'),
+          el('input', { type: 'number', step: 'any', min: '0', value: c.max, oninput: e => { c.max = +e.target.value; changed(); } }),
+          el('span', { class: 'tag' }, st.pct ? '%' : ''), el('span', { class: 'hint small' }, t('c.capNote')));
       }
       row.append(el('span', { class: 'grow' }),
         el('button', { class: 'icon', title: t('delete'), onclick: () => { S.conds.splice(ci, 1); renderConds(); changed(); } }, '×'));
@@ -217,6 +234,7 @@
     if (kind === 'hits') { c.subs = [true, true, false, false]; c.min = S.guarantee + 1; }
     if (kind === 'score') { const cs = currentScore(); c.min = cs != null ? Math.round(cs * 100) / 100 : 5; }
     if (kind === 'value') { c.sub = 0; c.min = 0; }
+    if (kind === 'cap') { const i = S.subs.findIndex(x => x.stat === 'cr'); c.sub = i >= 0 ? i : 0; c.max = 10; delete c.join; }
     S.conds.push(c);
     renderConds(); changed();
   }));
@@ -748,7 +766,7 @@
         const s = d && d.settings ? d.settings : d; // 也接受只有設定的檔案
         if (!s || !Array.isArray(s.subs) || s.subs.length !== 4 || s.subs.some(x => !byId[x.stat]))
           throw new Error(t('io.invalid'));
-        const conds = Array.isArray(s.conds) ? s.conds.filter(c => ['hits', 'score', 'value'].includes(c.type)) : [];
+        const conds = Array.isArray(s.conds) ? s.conds.filter(c => ['hits', 'score', 'value', 'cap'].includes(c.type)) : [];
         S = Object.assign(clone(DEFAULT), s, { conds });
         S.initCount = S.initCount === 3 ? 3 : 4;
         S.guarantee = [2, 3, 4].includes(+S.guarantee) ? +S.guarantee : 3;

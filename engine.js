@@ -175,8 +175,10 @@
   /* ---------- 保留條件 ---------- */
   // 條件：{type:'hits', subs:[bool×4], min} | {type:'score', min} | {type:'value', sub, min}
   // join: 'and' | 'or'（第一個忽略）。「且」優先於「或」。
+  // {type:'cap', sub, max}：收益上限，不是判定條件（超過上限的數值按上限計分），這裡略過。
   function compileConds(conds, stats) {
-    if (!conds || conds.length === 0) return () => true;
+    conds = (conds || []).filter(c => c.type !== 'cap');
+    if (conds.length === 0) return () => true;
     const groups = [];
     conds.forEach((c, i) => {
       if (i === 0 || c.join === 'or') groups.push([c]); else groups[groups.length - 1].push(c);
@@ -208,7 +210,12 @@
     const stats = cfg.subs.map(s => statById[s.stat]);
     const w = cfg.subs.map(s => +s.w || 0);
     const unit = stats.map(s => s.avg);
-    const initScore = cfg.subs.reduce((a, s, i) => a + w[i] * s.init / unit[i], 0);
+    // 收益上限：該詞條數值超過上限時按上限計分（同一詞條設了多個上限取最小）
+    const cap = [Infinity, Infinity, Infinity, Infinity];
+    for (const c of cfg.conds || []) {
+      if (c.type === 'cap' && c.sub >= 0 && c.sub < 4 && isFinite(+c.max)) cap[c.sub] = Math.min(cap[c.sub], +c.max);
+    }
+    const initScore = cfg.subs.reduce((a, s, i) => a + w[i] * Math.min(s.init, cap[i]) / unit[i], 0);
     const cond = compileConds(cfg.conds, stats);
     const pairs = PAIRS.slice();
     if (cfg.includeBaseline) pairs.push(null);
@@ -224,7 +231,7 @@
         (function rec(i, q) {
           if (i === 4) {
             let score = 0;
-            for (let j = 0; j < 4; j++) score += w[j] * vals[j] / unit[j];
+            for (let j = 0; j < 4; j++) score += w[j] * Math.min(vals[j], cap[j]) / unit[j];
             const ok = cond(h, vals, score);
             if (ok) { combo.pSucc += q; combo.sSucc += q * score; }
             else combo.sFail += q * score;
